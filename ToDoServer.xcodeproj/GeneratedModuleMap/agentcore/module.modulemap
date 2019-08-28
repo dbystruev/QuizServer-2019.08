@@ -1,4 +1,4 @@
 module agentcore {
-    umbrella "/Users/dbystruev/Documents/SwiftBook/Lessons/2019.08.23 ToDoServer/ToDoServer/.build/checkouts/omr-agentcore/src/agentcore/include"
+    umbrella "/Users/dbystruev/Documents/SwiftBook/Lessons/2019.08.28ToDoServerKitura/QuizServer/.build/checkouts/omr-agentcore/src/agentcore/include"
     export *
 }

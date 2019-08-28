@@ -13,7 +13,7 @@ class Persistence {
         let pool = PostgreSQLConnection.createPool(
             host: "localhost",
             port: 5432,
-            options: [.databaseName("tododb")],
+            options: [.databaseName("quizdb")],
             poolOptions: ConnectionPoolOptions(initialCapacity: 10, maxCapacity: 50)
         )
         Database.default = Database(pool)
