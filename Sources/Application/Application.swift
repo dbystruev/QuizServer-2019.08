@@ -16,9 +16,7 @@ public let health = Health()
 
 public class App {
     // MARK: - Stored Variables
-//    private var todoStore = [ToDo]()
-    private var nextId = 0
-    private var workerQueue = DispatchQueue(label: "worker")
+    private var nextId = 10
     
     // MARK: - Constants
     let router = Router()
@@ -33,20 +31,36 @@ public class App {
     func postInit() throws {
         // Database setup
         Persistence.setUp()
+        
         do {
-            try ToDo.createTableSync()
+            try Answer.createTableSync()
         } catch let error {
-            print(#line, #function, "WARNING: Table already exists. \(error.localizedDescription)")
+            print(#line, #function, "WARNING: Table Answers already exists. \(error.localizedDescription)")
         }
+        
+        do {
+            try Question.createTableSync()
+        } catch let error {
+            print(#line, #function, "WARNING: Table Questions already exists. \(error.localizedDescription)")
+        }
+        
+        // TODO: Find maximum id and assign it to nextID
         
         // Endpoints
         initializeHealthRoutes(app: self)
         KituraOpenAPI.addEndpoints(to: router)
-
+        
         // KituraCORS
         let options = Options(allowedOrigin: .all)
         let cors = CORS(options: options)
+        
+        // Setup Routes
         router.all("/*", middleware: cors)
+        
+        router.get("/questions", handler: getAllQuestionsHandler)
+        router.get("/questions", handler: getOneQuestionHandler)
+        router.post("/questions", handler: storeQuestionHandler)
+        
         router.delete("/", handler: deleteAllHandler)
         router.delete("/", handler: deleteOneHandler)
         router.get("/", handler: getAllHandler)
@@ -54,47 +68,58 @@ public class App {
         router.patch("/", handler: updateHandler)
         router.post("/", handler: storeHandler)
     }
+    
+    // MARK: - Question Handlers
+    func getAllQuestionsHandler(completion: @escaping ([Question]?, RequestError?) -> Void) {
+        Question.findAll(completion)
+    }
+    
+    func getOneQuestionHandler(id: Int, completion: @escaping (Question?, RequestError?) -> Void) {
+        Question.find(id: id, completion)
+    }
+    
+    func storeQuestionHandler(question: Question, completion: @escaping (Question?, RequestError?) -> Void) {
+        guard
+            let text = question.text,
+            !text.isEmpty,
+            question.type != nil,
+            let answerId = question.answerId
+        else {
+            return completion(nil, .badRequest)
+        }
+        // TODO: use answerId for Question.find(id: id, completion)
+        Answer.find(id: answerId) { answer, error in
+            guard answer != nil else {
+                return completion(nil, .notFound)
+            }
+            var question = question
+            question.id = self.nextId
+            self.nextId += 1
+            return question.save(completion)
+            
+        }
+    }
 
     // MARK: - DELETE Handlers
     func deleteAllHandler(completion: @escaping (RequestError?) -> Void) {
-//        execute {
-//            todoStore = []
-//        }
-//        completion(nil)
         ToDo.deleteAll(completion)
     }
     
     func deleteOneHandler(id: Int, completion: @escaping (RequestError?) -> Void) {
-//        guard let index = todoStore.firstIndex(where: { $0.id == id }) else {
-//            return completion(.notFound)
-//        }
-//        execute {
-//            todoStore.remove(at: index)
-//        }
-//        completion(nil)
         ToDo.delete(id: id, completion)
     }
 
     // MARK: - GET Handlers
     func getAllHandler(completion: @escaping ([ToDo]?, RequestError?) -> Void) {
-//        completion(todoStore, nil)
         ToDo.findAll(completion)
     }
     
     func getOneHandler(id: Int, completion: @escaping (ToDo?, RequestError?) -> Void) {
-//        guard let todo = todoStore.first(where: { $0.id == id }) else {
-//            return completion(nil, .notFound)
-//        }
-//        completion(todo, nil)
         ToDo.find(id: id, completion)
     }
     
     // MARK: - PATCH Handlers
     func updateHandler(id: Int, new: ToDo, completion: @escaping (ToDo?, RequestError?) -> Void) {
-//        guard let index = todoStore.firstIndex(where: { $0.id == id }) else {
-//            return completion(nil, .notFound)
-//        }
-//        var current = todoStore[index]
         
         ToDo.find(id: id) { current, error in
             guard error == nil else {
@@ -116,12 +141,6 @@ public class App {
             
             current.update(id: id, completion)
         }
-        
-        
-//        execute {
-//            todoStore[index] = current
-//        }
-//        completion(current, nil)
     }
 
     // MARK: - POST Handlers
@@ -133,10 +152,6 @@ public class App {
         todo.id = nextId
         todo.url = "http://localhost:8080/\(nextId)"
         nextId += 1
-//        execute {
-//            todoStore.append(todo)
-//        }
-//        completion(todo, nil)
         todo.save(completion)
     }
 
@@ -145,12 +160,6 @@ public class App {
         try postInit()
         Kitura.addHTTPServer(onPort: cloudEnv.port, with: router)
         Kitura.run()
-    }
-
-    func execute(_ block: () -> Void) {
-        workerQueue.sync {
-            block()
-        }
     }
 }
 
