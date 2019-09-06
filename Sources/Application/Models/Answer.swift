@@ -11,7 +11,7 @@ import SwiftKueryORM
 struct Answer: Codable {
     var id: Int?
     var text: String?
-    var type: AnimalType?
+    var type: Int?
     var questionId: Int?
     var nextId: Int?
 }

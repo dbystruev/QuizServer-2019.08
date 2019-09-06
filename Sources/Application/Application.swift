@@ -16,7 +16,7 @@ public let health = Health()
 
 public class App {
     // MARK: - Stored Variables
-    private var nextId = 10
+    private var nextId = 0
     
     // MARK: - Constants
     let router = Router()
@@ -44,7 +44,16 @@ public class App {
             print(#line, #function, "WARNING: Table Questions already exists. \(error.localizedDescription)")
         }
         
-        // TODO: Find maximum id and assign it to nextID
+        // Find maximum id and assign it to nextID
+        Question.findAll { questions, error in
+            let maxQuestionId = questions?.compactMap({ $0.id }).max() ?? -1
+            
+            Answer.findAll { answers, error in
+                let maxAnswerId = answers?.compactMap({ $0.id }).max() ?? -1
+                self.nextId = max(maxQuestionId, maxAnswerId) + 1
+                print(#line, #function, "nextId =", self.nextId)
+            }
+        }
         
         // Endpoints
         initializeHealthRoutes(app: self)
@@ -57,16 +66,63 @@ public class App {
         // Setup Routes
         router.all("/*", middleware: cors)
         
-        router.get("/questions", handler: getAllQuestionsHandler)
-        router.get("/questions", handler: getOneQuestionHandler)
-        router.post("/questions", handler: storeQuestionHandler)
-        
         router.delete("/", handler: deleteAllHandler)
         router.delete("/", handler: deleteOneHandler)
         router.get("/", handler: getAllHandler)
         router.get("/", handler: getOneHandler)
         router.patch("/", handler: updateHandler)
         router.post("/", handler: storeHandler)
+        
+        router.get("/answers", handler: getAllAnswersHandler)
+        router.get("/answers", handler: getOneAnswerHandler)
+        router.post("/answers", handler: storeAnswerHandler)
+        
+        router.get("/questions", handler: getAllQuestionsHandler)
+        router.get("/questions", handler: getOneQuestionHandler)
+        router.post("/questions", handler: storeQuestionHandler)
+    }
+    
+    // MARK: - Answer Handlers
+    func getAllAnswersHandler(completion: @escaping ([Answer]?, RequestError?) -> Void) {
+        Answer.findAll(completion)
+    }
+    
+    func getOneAnswerHandler(id: Int, completion: @escaping (Answer?, RequestError?) -> Void) {
+        Answer.find(id: id, completion)
+    }
+    
+    func storeAnswerHandler(answer: Answer, completion: @escaping (Answer?, RequestError?) -> Void) {
+        // check that text and type are not empty
+        let answerId = nextId
+        
+        guard
+            let text = answer.text,
+            !text.isEmpty,
+            answer.type != nil
+        else {
+            return completion(nil, .badRequest)
+        }
+        // if question exists then add itself to the chain of answers
+        if let questionId = answer.questionId {
+            Question.find(id: questionId) { question, error in
+                if var question = question {
+                    if let answerId = question.answerId {
+                        // TODO: add answer to the end of chain
+                    } else {
+                        question.answerId = answerId
+                        question.update(id: questionId, { question, error in
+                            return completion(nil, .badRequest)
+                        })
+                    }
+                }
+            }
+        }
+        
+        // store answer
+        var answer = answer
+        answer.id = answerId
+        nextId += 1
+        return answer.save(completion)
     }
     
     // MARK: - Question Handlers
@@ -79,6 +135,8 @@ public class App {
     }
     
     func storeQuestionHandler(question: Question, completion: @escaping (Question?, RequestError?) -> Void) {
+        let questionId = nextId
+        
         guard
             let text = question.text,
             !text.isEmpty,
@@ -87,19 +145,26 @@ public class App {
         else {
             return completion(nil, .badRequest)
         }
-        // TODO: use answerId for Question.find(id: id, completion)
+        // use answerId to check that it exists
         Answer.find(id: answerId) { answer, error in
-            guard answer != nil else {
+            guard var answer = answer, let answerId = answer.id else {
                 return completion(nil, .notFound)
             }
-            var question = question
-            question.id = self.nextId
-            self.nextId += 1
-            return question.save(completion)
+            answer.questionId = questionId
+            answer.update(id: answerId) { answer, error in
+                guard answer != nil && error == nil else {
+                    return completion(nil, .badRequest)
+                }
+                
+                var question = question
+                question.id = questionId
+                self.nextId += 1
+                return question.save(completion)
+            }
             
         }
     }
-
+    
     // MARK: - DELETE Handlers
     func deleteAllHandler(completion: @escaping (RequestError?) -> Void) {
         ToDo.deleteAll(completion)
