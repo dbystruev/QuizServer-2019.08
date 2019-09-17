@@ -8,7 +8,9 @@
 import SwiftKueryORM
 
 enum ResponseType: Int, Codable {    
-    case single, multiple, ranged
+    case single = 1
+    case multiple
+    case ranged
 }
 
 extension ResponseType: Model {}

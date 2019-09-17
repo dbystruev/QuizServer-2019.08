@@ -12,7 +12,6 @@ struct Question: Codable {
     var id: Int?
     var text: String?
     var type: Int?
-    var answerId: Int?
 }
 
 extension Question: Model {}

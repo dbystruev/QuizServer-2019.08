@@ -9,7 +9,7 @@ import Foundation
 import SwiftKueryORM
 
 enum AnimalType: Int, Codable {
-    case dog
+    case dog = 1
     case cat
     case rabbit
     case turtle

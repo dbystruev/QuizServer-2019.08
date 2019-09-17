@@ -13,7 +13,6 @@ struct Answer: Codable {
     var text: String?
     var type: Int?
     var questionId: Int?
-    var nextId: Int?
 }
 
 extension Answer: Model {}

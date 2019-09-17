@@ -21,13 +21,13 @@ public class App {
     // MARK: - Constants
     let router = Router()
     let cloudEnv = CloudEnv()
-
+    
     // MARK: - Initialization
     public init() throws {
         // Run the metrics initializer
         initializeMetrics(router: router)
     }
-
+    
     func postInit() throws {
         // Database setup
         Persistence.setUp()
@@ -66,20 +66,22 @@ public class App {
         // Setup Routes
         router.all("/*", middleware: cors)
         
-        router.delete("/", handler: deleteAllHandler)
-        router.delete("/", handler: deleteOneHandler)
-        router.get("/", handler: getAllHandler)
-        router.get("/", handler: getOneHandler)
-        router.patch("/", handler: updateHandler)
-        router.post("/", handler: storeHandler)
+        //        router.delete("/", handler: deleteAllHandler)
+        //        router.delete("/", handler: deleteOneHandler)
+        //        router.get("/", handler: getAllHandler)
+        //        router.get("/", handler: getOneHandler)
+        //        router.patch("/", handler: updateHandler)
+        //        router.post("/", handler: storeHandler)
         
-        router.get("/answers", handler: getAllAnswersHandler)
-        router.get("/answers", handler: getOneAnswerHandler)
-        router.post("/answers", handler: storeAnswerHandler)
+        router.get("answers", handler: getAllAnswersHandler)
+        router.get("answers", handler: getOneAnswerHandler)
+        router.delete("answers", handler: deleteOneAnswerHandler)
+        router.patch("answers", handler: updateAnswerHandler)
+        router.post("answers", handler: storeAnswerHandler)
         
-        router.get("/questions", handler: getAllQuestionsHandler)
-        router.get("/questions", handler: getOneQuestionHandler)
-        router.post("/questions", handler: storeQuestionHandler)
+        router.get("questions", handler: getAllQuestionsHandler)
+        router.get("questions", handler: getOneQuestionHandler)
+        router.post("questions", handler: storeQuestionHandler)
     }
     
     // MARK: - Answer Handlers
@@ -99,23 +101,8 @@ public class App {
             let text = answer.text,
             !text.isEmpty,
             answer.type != nil
-        else {
-            return completion(nil, .badRequest)
-        }
-        // if question exists then add itself to the chain of answers
-        if let questionId = answer.questionId {
-            Question.find(id: questionId) { question, error in
-                if var question = question {
-                    if let answerId = question.answerId {
-                        // TODO: add answer to the end of chain
-                    } else {
-                        question.answerId = answerId
-                        question.update(id: questionId, { question, error in
-                            return completion(nil, .badRequest)
-                        })
-                    }
-                }
-            }
+            else {
+                return completion(nil, .badRequest)
         }
         
         // store answer
@@ -123,6 +110,33 @@ public class App {
         answer.id = answerId
         nextId += 1
         return answer.save(completion)
+    }
+    
+    func deleteOneAnswerHandler(id: Int, completion: @escaping (RequestError?) -> Void) {
+        Answer.delete(id: id, completion)
+    }
+    
+    func updateAnswerHandler(id: Int, new: Answer, completion: @escaping (Answer?, RequestError?) -> Void) {
+        
+        Answer.find(id: id) { current, error in
+            guard error == nil else {
+                return completion(nil, error)
+            }
+            
+            guard var current = current else {
+                return completion(nil, .notFound)
+            }
+            
+            guard id == current.id else {
+                return completion(nil, .internalServerError)
+            }
+            
+            current.text = new.text ?? current.text
+            current.type = new.type ?? current.type
+            current.questionId = new.questionId ?? current.questionId
+            
+            current.update(id: id, completion)
+        }
     }
     
     // MARK: - Question Handlers
@@ -140,86 +154,65 @@ public class App {
         guard
             let text = question.text,
             !text.isEmpty,
-            question.type != nil,
-            let answerId = question.answerId
-        else {
-            return completion(nil, .badRequest)
+            question.type != nil
+            else {
+                return completion(nil, .badRequest)
         }
-        // use answerId to check that it exists
-        Answer.find(id: answerId) { answer, error in
-            guard var answer = answer, let answerId = answer.id else {
-                return completion(nil, .notFound)
-            }
-            answer.questionId = questionId
-            answer.update(id: answerId) { answer, error in
-                guard answer != nil && error == nil else {
-                    return completion(nil, .badRequest)
-                }
-                
-                var question = question
-                question.id = questionId
-                self.nextId += 1
-                return question.save(completion)
-            }
-            
-        }
+        
+        // store question
+        var question = question
+        question.id = questionId
+        nextId += 1
+        
+        return question.save(completion)
     }
     
     // MARK: - DELETE Handlers
-    func deleteAllHandler(completion: @escaping (RequestError?) -> Void) {
-        ToDo.deleteAll(completion)
-    }
+    //    func deleteAllHandler(completion: @escaping (RequestError?) -> Void) {
+    //        ToDo.deleteAll(completion)
+    //    }
+    //
+    //    func deleteOneHandler(id: Int, completion: @escaping (RequestError?) -> Void) {
+    //        ToDo.delete(id: id, completion)
+    //    }
+    //
+    //    // MARK: - PATCH Handlers
+    //    func updateHandler(id: Int, new: ToDo, completion: @escaping (ToDo?, RequestError?) -> Void) {
+    //
+    //        ToDo.find(id: id) { current, error in
+    //            guard error == nil else {
+    //                return completion(nil, error)
+    //            }
+    //
+    //            guard var current = current else {
+    //                return completion(nil, .notFound)
+    //            }
+    //
+    //            guard id == current.id else {
+    //                return completion(nil, .internalServerError)
+    //            }
+    //
+    //            current.user = new.user ?? current.user
+    //            current.order = new.order ?? current.order
+    //            current.title = new.title ?? current.title
+    //            current.completed = new.completed ?? current.completed
+    //
+    //            current.update(id: id, completion)
+    //        }
+    //    }
+    //
+    //    // MARK: - POST Handlers
+    //    func storeHandler(todo: ToDo, completion: @escaping (ToDo?, RequestError?) -> Void) {
+    //        var todo = todo
+    //        if todo.completed == nil {
+    //            todo.completed = false
+    //        }
+    //        todo.id = nextId
+    //        todo.url = "http://localhost:8080/\(nextId)"
+    //        nextId += 1
+    //        todo.save(completion)
+    //    }
     
-    func deleteOneHandler(id: Int, completion: @escaping (RequestError?) -> Void) {
-        ToDo.delete(id: id, completion)
-    }
-
-    // MARK: - GET Handlers
-    func getAllHandler(completion: @escaping ([ToDo]?, RequestError?) -> Void) {
-        ToDo.findAll(completion)
-    }
-    
-    func getOneHandler(id: Int, completion: @escaping (ToDo?, RequestError?) -> Void) {
-        ToDo.find(id: id, completion)
-    }
-    
-    // MARK: - PATCH Handlers
-    func updateHandler(id: Int, new: ToDo, completion: @escaping (ToDo?, RequestError?) -> Void) {
-        
-        ToDo.find(id: id) { current, error in
-            guard error == nil else {
-                return completion(nil, error)
-            }
-            
-            guard var current = current else {
-                return completion(nil, .notFound)
-            }
-            
-            guard id == current.id else {
-                return completion(nil, .internalServerError)
-            }
-            
-            current.user = new.user ?? current.user
-            current.order = new.order ?? current.order
-            current.title = new.title ?? current.title
-            current.completed = new.completed ?? current.completed
-            
-            current.update(id: id, completion)
-        }
-    }
-
-    // MARK: - POST Handlers
-    func storeHandler(todo: ToDo, completion: @escaping (ToDo?, RequestError?) -> Void) {
-        var todo = todo
-        if todo.completed == nil {
-            todo.completed = false
-        }
-        todo.id = nextId
-        todo.url = "http://localhost:8080/\(nextId)"
-        nextId += 1
-        todo.save(completion)
-    }
-
     // MARK: - Running
     public func run() throws {
         try postInit()
