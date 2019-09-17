@@ -73,15 +73,15 @@ public class App {
         //        router.patch("/", handler: updateHandler)
         //        router.post("/", handler: storeHandler)
         
-        router.get("answers", handler: getAllAnswersHandler)
-        router.get("answers", handler: getOneAnswerHandler)
-        router.delete("answers", handler: deleteOneAnswerHandler)
-        router.patch("answers", handler: updateAnswerHandler)
-        router.post("answers", handler: storeAnswerHandler)
+        router.get("/answers", handler: getAllAnswersHandler)
+        router.get("/answers", handler: getOneAnswerHandler)
+        router.delete("/answers", handler: deleteOneAnswerHandler)
+        router.patch("/answers", handler: updateAnswerHandler)
+        router.post("/answers", handler: storeAnswerHandler)
         
-        router.get("questions", handler: getAllQuestionsHandler)
-        router.get("questions", handler: getOneQuestionHandler)
-        router.post("questions", handler: storeQuestionHandler)
+        router.get("/questions", handler: getAllQuestionsHandler)
+        router.get("/questions", handler: getOneQuestionHandler)
+        router.post("/questions", handler: storeQuestionHandler)
     }
     
     // MARK: - Answer Handlers

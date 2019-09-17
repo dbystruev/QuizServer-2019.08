@@ -6,3 +6,4 @@
 /spec.json
 ./config/localdev-config.json
 /ToDoServer.xcodeproj
+quizserver.log
