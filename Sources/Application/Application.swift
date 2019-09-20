@@ -81,6 +81,8 @@ public class App {
         
         router.get("/questions", handler: getAllQuestionsHandler)
         router.get("/questions", handler: getOneQuestionHandler)
+        router.delete("/questions", handler: deleteOneQuestionHandler)
+        router.patch("/questions", handler: updateQuestionHandler)
         router.post("/questions", handler: storeQuestionHandler)
     }
     
@@ -165,6 +167,32 @@ public class App {
         nextId += 1
         
         return question.save(completion)
+    }
+    
+    func deleteOneQuestionHandler(id: Int, completion: @escaping (RequestError?) -> Void) {
+        Question.delete(id: id, completion)
+    }
+    
+    func updateQuestionHandler(id: Int, new: Question, completion: @escaping (Question?, RequestError?) -> Void) {
+        
+        Question.find(id: id) { current, error in
+            guard error == nil else {
+                return completion(nil, error)
+            }
+            
+            guard var current = current else {
+                return completion(nil, .notFound)
+            }
+            
+            guard id == current.id else {
+                return completion(nil, .internalServerError)
+            }
+            
+            current.text = new.text ?? current.text
+            current.type = new.type ?? current.type
+            
+            current.update(id: id, completion)
+        }
     }
     
     // MARK: - DELETE Handlers
